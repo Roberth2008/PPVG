@@ -1,6 +1,6 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js";
-import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-auth.js";
-import { getFirestore, collection, doc, getDoc, getDocs, addDoc, setDoc, updateDoc, deleteDoc, query, where, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-firestore.js";
+import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut, sendPasswordResetEmail, reload } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-auth.js";
+import { getFirestore, collection, doc, getDoc, getDocs, addDoc, setDoc, updateDoc, deleteDoc, query, where, serverTimestamp, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.0/firebase-firestore.js";
 
 // Pegue aquí la configuración de su aplicación web de Firebase.
 const firebaseConfig = {
@@ -17,6 +17,8 @@ const REGIONS = { canas: "Cañas", nicoya: "Nicoya", liberia: "Liberia", santa_c
 const $ = id => document.getElementById(id);
 let auth = null, db = null, user = null, profile = null;
 let plans = [], assignments = [], tracking = [], regionalUsers = [];
+let realtimeUnsubscribers = [];
+let realtimeProgress = [];
 const MODULES = ["PPVG", "PFP", "Control visitas general", "Control visitas", "Hoja de control"];
 const firebaseReady = Object.values(firebaseConfig).every(value => value && !value.startsWith("REEMPLAZAR"));
 
@@ -28,7 +30,7 @@ if (location.protocol === "file:") {
   db = getFirestore(app);
   onAuthStateChanged(auth, async authenticatedUser => {
     user = authenticatedUser;
-    if (!user) { showLogin(); return; }
+    if (!user) { stopRealtimeSync(); profile = null; showLogin(); return; }
     try {
       const profileSnapshot = await getDoc(doc(db, "users", user.uid));
       if (!profileSnapshot.exists()) throw new Error(`No existe users/${user.uid}. Cree el perfil de esta cuenta en Firestore.`);
@@ -71,17 +73,20 @@ $("loginForm").addEventListener("submit", async event => {
 
 async function startApp() {
   showApp();
-  navigate("home");
+  applySettings();
   const name = profile.displayName || user.email?.split("@")[0] || "Usuario";
   const initials = name.split(/[ ._-]/).filter(Boolean).slice(0, 2).map(part => part[0].toUpperCase()).join("") || "U";
   $("accountName").textContent = name;
   $("accountRole").textContent = profile.role === "admin" ? "Administración" : `Dirección Regional de ${REGIONS[profile.region]}`;
-  ["avatar", "headAvatar", "profileAvatar"].forEach(id => $(id).textContent = initials);
-  $("profileName").textContent = name;
-  $("profileEmail").textContent = user.email || "—";
-  $("profileRole").textContent = profile.role === "admin" ? "Administración" : "Cuenta regional";
-  $("profileRegion").textContent = profile.role === "admin" ? "Todas las direcciones" : REGIONS[profile.region];
-  $("profileUid").textContent = user.uid;
+  ["avatar", "headAvatar"].forEach(id => $(id).textContent = initials);
+  const regionLabel = profile.role === "admin" ? "Todas las Direcciones Regionales" : `Dirección Regional de ${REGIONS[profile.region]}`;
+  $("settingsAccountName").textContent = name;
+  $("settingsAccountEmail").textContent = user.email || "Correo no disponible";
+  $("settingsAccountRole").textContent = profile.role === "admin" ? "Administración PPVG" : "Cuenta regional";
+  $("settingsAccountRegion").textContent = regionLabel;
+  $("settingHomePage").querySelector('option[value="admin"]').hidden = profile.role !== "admin";
+  loadSettingsControls();
+
   $("dateNow").textContent = new Date().toLocaleDateString("es-CR", { year: "numeric", month: "long", day: "numeric" });
   const isAdmin = profile.role === "admin";
   document.querySelectorAll(".admin-only").forEach(element => element.classList.toggle("hide", !isAdmin));
@@ -99,20 +104,105 @@ async function startApp() {
     $("regionFilter").disabled = true;
     $("trackingSubtitle").textContent = `Tareas asignadas a la Dirección Regional de ${REGIONS[profile.region]}.`;
   }
+  $("headAccountName").textContent = name;
+  $("headAccountRole").textContent = profile.role === "admin" ? "Administración" : `Dirección Regional de ${REGIONS[profile.region]}`;
+  $("headProfileButton").disabled = profile.role !== "admin";
+  $("headProfileButton").setAttribute("aria-label", profile.role === "admin" ? "Abrir ajustes de administración" : "Cuenta actual");
+  const preferredPage = getUserSettings().homePage || "home";
+  navigate(["admin", "settings"].includes(preferredPage) && !isAdmin ? "home" : preferredPage);
   await loadAll();
+  startRealtimeSync();
+  if (isAdmin) renderAdminPanel();
+}
+
+
+const DEFAULT_SETTINGS = { density: "comfortable", textSize: "normal", homePage: "home" };
+function settingsStorageKey() { return `ppvg_preferences_${user?.uid || "guest"}`; }
+function getUserSettings() {
+  try { return { ...DEFAULT_SETTINGS, ...JSON.parse(localStorage.getItem(settingsStorageKey()) || "{}") }; }
+  catch { return { ...DEFAULT_SETTINGS }; }
+}
+function saveUserSettings(patch) {
+  const next = { ...getUserSettings(), ...patch };
+  localStorage.setItem(settingsStorageKey(), JSON.stringify(next));
+  applySettings(next);
+  return next;
+}
+function applySettings(settings = getUserSettings()) {
+  document.body.classList.toggle("ppvg-compact", settings.density === "compact");
+  document.body.classList.toggle("ppvg-large-text", settings.textSize === "large");
+}
+function loadSettingsControls() {
+  const settings = getUserSettings();
+  $("settingDensity").value = settings.density;
+  $("settingTextSize").value = settings.textSize;
+  $("settingHomePage").value = settings.homePage;
+  applySettings(settings);
+}
+$("settingDensity").addEventListener("change", event => { saveUserSettings({ density: event.target.value }); showToast("Densidad de interfaz actualizada."); });
+$("settingTextSize").addEventListener("change", event => { saveUserSettings({ textSize: event.target.value }); showToast("Tamaño de texto actualizado."); });
+$("settingHomePage").addEventListener("change", event => { saveUserSettings({ homePage: event.target.value }); showToast("Página inicial guardada para el próximo ingreso."); });
+$("settingsResetPreferences").addEventListener("click", () => {
+  localStorage.removeItem(settingsStorageKey()); loadSettingsControls(); showToast("Se restablecieron las preferencias de esta cuenta.");
+});
+$("settingsResetPassword").addEventListener("click", async () => {
+  if (!user?.email) { showToast("La cuenta no tiene un correo disponible."); return; }
+  const button = $("settingsResetPassword"); button.disabled = true;
+  try { await sendPasswordResetEmail(auth, user.email); showToast(`Enviamos instrucciones a ${user.email}.`); }
+  catch (error) { console.error(error); showToast(error.code === "auth/too-many-requests" ? "Demasiados intentos. Inténtalo más tarde." : "No se pudo enviar el correo de recuperación."); }
+  finally { button.disabled = false; }
+});
+$("settingsRefreshData").addEventListener("click", async () => {
+  const button = $("settingsRefreshData"); button.disabled = true;
+  try { await loadAll(); $("settingsLastSync").textContent = new Date().toLocaleTimeString("es-CR", {hour:"2-digit", minute:"2-digit"}); showToast("Se consultaron nuevamente los datos de Firestore."); }
+  catch (error) { console.error(error); showToast("No fue posible actualizar los datos."); }
+  finally { button.disabled = false; }
+});
+$("settingsLogout").addEventListener("click", () => $("logout").click());
+$("settingsGoAdmin").addEventListener("click", () => navigate("admin"));
+function updateSyncStatus(state, message = "") {
+  const dot = $("settingsSyncDot"); if (!dot) return;
+  dot.classList.toggle("is-error", state === "error");
+  dot.classList.toggle("is-live", state === "live");
+  $("settingsSyncTitle").textContent = state === "live" ? "Sincronización activa" : state === "error" ? "Problema de sincronización" : "Conectando…";
+  $("settingsSyncDescription").textContent = message || (state === "live" ? "Firestore está enviando actualizaciones automáticamente." : state === "error" ? "Revise la conexión y los permisos de Firestore." : "Esperando confirmación de Firestore.");
+  if (state === "live") $("settingsLastSync").textContent = new Date().toLocaleTimeString("es-CR", {hour:"2-digit", minute:"2-digit"});
 }
 
 function navigate(page) {
+  // Las secciones administrativas nunca deben abrirse desde una cuenta regional.
+  if (["admin", "settings"].includes(page) && profile?.role !== "admin") page = "home";
   document.querySelectorAll(".page").forEach(element => element.classList.remove("active"));
-  $("page-" + page).classList.add("active");
-  document.querySelectorAll(".nav").forEach(button => button.classList.toggle("active", button.dataset.page === page));
-  $("crumb").textContent = ({ home: "Inicio", plans: "PPVG", tracking: "Seguimiento de PPVG", profile: "Datos del perfil" })[page];
-  $("sidebar").classList.remove("open");
+  const target = $("page-" + page); if (!target) return; target.classList.add("active");
+  document.querySelectorAll(".nav").forEach(button => {
+    const active = button.dataset.page === page;
+    button.classList.toggle("active", active);
+    if (active) button.setAttribute("aria-current", "page"); else button.removeAttribute("aria-current");
+  });
+  $("crumb").textContent = ({ home: "Inicio", plans: "PPVG", tracking: "Seguimiento de PPVG", settings: "Ajustes", admin: "Administración" })[page];
+  setSidebarOpen(false);
 }
 document.querySelectorAll(".nav").forEach(button => button.addEventListener("click", () => navigate(button.dataset.page)));
 document.querySelectorAll("[data-go]").forEach(button => button.addEventListener("click", () => navigate(button.dataset.go)));
-$("menu").onclick = () => $("sidebar").classList.toggle("open");
+$("headProfileButton").addEventListener("click", () => { if (profile?.role === "admin") navigate("settings"); });
+$("adminGoPlans")?.addEventListener("click", () => navigate("plans"));
+$("adminGoTracking")?.addEventListener("click", () => navigate("tracking"));
+$("adminRefresh")?.addEventListener("click", () => { loadAll().then(() => showToast("Datos sincronizados.")); });
+$("adminExportCsv")?.addEventListener("click", exportAdminCsv);
+$("adminBackupJson")?.addEventListener("click", exportAdminJson);
+function setSidebarOpen(open) {
+  $("sidebar").classList.toggle("open", open);
+  $("sidebarBackdrop").classList.toggle("visible", open);
+  $("menu").setAttribute("aria-expanded", String(open));
+  $("menu").setAttribute("aria-label", open ? "Cerrar menú de navegación" : "Abrir menú de navegación");
+  document.body.classList.toggle("sidebar-is-open", open);
+}
+$("menu").onclick = () => setSidebarOpen(!$("sidebar").classList.contains("open"));
+$("sidebarBackdrop").onclick = () => setSidebarOpen(false);
+document.addEventListener("keydown", event => { if (event.key === "Escape") setSidebarOpen(false); });
+window.addEventListener("resize", () => { if (window.innerWidth > 760) setSidebarOpen(false); });
 $("logout").onclick = async () => {
+  stopRealtimeSync();
   // Evita que filtros de la sesión anterior queden visualmente activos al cambiar de cuenta.
   if ($("regionFilter")) { $("regionFilter").disabled = false; $("regionFilter").value = "all"; }
   if ($("moduleFilter")) $("moduleFilter").value = "all";
@@ -244,11 +334,105 @@ $("planForm").addEventListener("submit", async event => {
     for (const previous of previousAssignments) {
       if (!selectedRegions.includes(previous.region)) await deleteDoc(doc(db, "ppvgAssignments", previous.id));
     }
-    $("planModal").classList.add("hide"); await loadAll(); showToast(id ? "Tarea actualizada" : "Tarea creada y asignada");
+    $("planModal").classList.add("hide"); showToast(id ? "Tarea actualizada y sincronizando" : "Tarea creada y asignada");
   } catch (error) {
     console.error(error); $("planMsg").textContent = error.message || "No se pudo guardar. Revise los permisos de Firestore.";
   } finally { button.disabled = false; button.textContent = "Guardar tarea"; }
 });
+
+function stopRealtimeSync() { realtimeUnsubscribers.forEach(unsubscribe => { try { unsubscribe(); } catch {} }); realtimeUnsubscribers = []; }
+function startRealtimeSync() {
+  stopRealtimeSync();
+  if (!db || !user || !profile) return;
+  const assignmentsRef = profile.role === "admin" ? collection(db, "ppvgAssignments") : query(collection(db, "ppvgAssignments"), where("region", "==", profile.region));
+  const trackingRef = profile.role === "admin" ? collection(db, "ppvgTracking") : query(collection(db, "ppvgTracking"), where("region", "==", profile.region));
+  let plansReady = false, assignmentsReady = false, trackingReady = false;
+  const refresh = () => {
+    if (!plansReady || !assignmentsReady || !trackingReady) return;
+    updateSyncStatus("live");
+    const progressById = new Map(realtimeProgress.map(row => [row.id, row]));
+    tracking = assignments.map(assignment => ({ ...assignment, ...(progressById.get(assignment.id) || { periodOne: 0, periodTwo: 0, notes: "" }) }));
+    renderPlans(); renderTracking();
+    if (profile.role === "admin") renderAdminPanel();
+  };
+  realtimeUnsubscribers.push(onSnapshot(collection(db, "ppvgPlans"), snapshot => {
+    plans = snapshot.docs.map(item => ({ id: item.id, ...item.data() })); plansReady = true; refresh();
+  }, error => { console.error("Realtime ppvgPlans", error); updateSyncStatus("error", "No se pudo sincronizar la planificación."); showToast("No se pudo sincronizar la planificación."); }));
+  realtimeUnsubscribers.push(onSnapshot(assignmentsRef, snapshot => {
+    assignments = snapshot.docs.map(item => ({ id: item.id, ...item.data() })); assignmentsReady = true; refresh();
+  }, error => { console.error("Realtime ppvgAssignments", error); updateSyncStatus("error", "No se pudieron sincronizar las asignaciones."); showToast("No se pudieron sincronizar las asignaciones."); }));
+  realtimeUnsubscribers.push(onSnapshot(trackingRef, snapshot => {
+    realtimeProgress = snapshot.docs.map(item => ({ id: item.id, ...item.data() })); trackingReady = true; refresh();
+  }, error => { console.error("Realtime ppvgTracking", error); updateSyncStatus("error", "No se pudieron sincronizar los avances."); showToast("No se pudieron sincronizar los avances."); }));
+}
+
+function getAdminTaskStatus(item) {
+  const goal = Number(item.goal || 0);
+  const completedAmount = Number(item.periodOne || 0) + Number(item.periodTwo || 0);
+  if (goal > 0 && completedAmount >= goal) return "completed";
+  if (completedAmount <= 0) return "pending";
+  return "inProgress";
+}
+
+function renderAdminPanel() {
+  if (profile?.role !== "admin") return;
+
+  const progressById = new Map(realtimeProgress.map(row => [row.id, row]));
+  const rows = assignments.map(assignment => ({
+    ...assignment,
+    ...(progressById.get(assignment.id) || { periodOne: 0, periodTwo: 0, notes: "" })
+  }));
+  const counts = rows.reduce((result, item) => {
+    result[getAdminTaskStatus(item)] += 1;
+    result.goal += Number(item.goal || 0);
+    result.achieved += Number(item.periodOne || 0) + Number(item.periodTwo || 0);
+    return result;
+  }, { pending: 0, inProgress: 0, completed: 0, goal: 0, achieved: 0 });
+
+  $("adminPlanCount").textContent = plans.length;
+  $("adminAssignmentCount").textContent = assignments.length;
+  $("adminPendingCount").textContent = counts.pending;
+  $("adminInProgressCount").textContent = counts.inProgress;
+  $("adminCompletedCount").textContent = counts.completed;
+  $("adminProgressCount").textContent = realtimeProgress.length;
+  $("adminUserCount").textContent = regionalUsers.length;
+  $("adminOverallProgress").textContent = percentage(counts.achieved, counts.goal) + "%";
+
+  $("adminRegionOverview").innerHTML = Object.entries(REGIONS).map(([key, label]) => {
+    const regionalRows = rows.filter(row => row.region === key);
+    const regionalCounts = regionalRows.reduce((result, item) => {
+      result[getAdminTaskStatus(item)] += 1;
+      result.goal += Number(item.goal || 0);
+      result.achieved += Number(item.periodOne || 0) + Number(item.periodTwo || 0);
+      return result;
+    }, { pending: 0, inProgress: 0, completed: 0, goal: 0, achieved: 0 });
+    const rate = percentage(regionalCounts.achieved, regionalCounts.goal);
+    return `<article class="admin-region-row">
+      <div class="admin-region-mark">${escapeHTML(label.slice(0,1))}</div>
+      <div class="admin-region-info">
+        <b>${escapeHTML(label)}</b>
+        <small>${regionalRows.length} asignadas · ${regionalCounts.completed} finalizadas · ${regionalCounts.pending} pendientes · ${regionalCounts.inProgress} en proceso</small>
+        <div class="admin-region-track"><i style="width:${Math.min(rate,100)}%"></i></div>
+      </div>
+      <strong>${rate}%</strong>
+    </article>`;
+  }).join("");
+}
+function downloadBlob(content, filename, type) {
+  const blob = new Blob([content], { type }); const url = URL.createObjectURL(blob); const a = document.createElement("a"); a.href = url; a.download = filename; a.click(); URL.revokeObjectURL(url);
+}
+function exportAdminCsv() {
+  if (profile?.role !== "admin") return;
+  const columns = ["Tarea","Encargado","Direccion Regional","Meta","Periodo I","Periodo II","Avance anual","Observaciones","Responsables","Periodo ejecucion"];
+  const rows = tracking.map(row => [row.activity,row.module,REGIONS[row.region] || row.region,row.goal,row.periodOne || 0,row.periodTwo || 0,Number(row.periodOne || 0)+Number(row.periodTwo || 0),row.notes,row.responsible,row.period]);
+  const csv = [columns,...rows].map(row => row.map(value => `"${String(value ?? "").replace(/"/g,'""')}"`).join(";")).join("\r\n");
+  downloadBlob("\ufeff"+csv, `PPVG_reporte_${new Date().toISOString().slice(0,10)}.csv`, "text/csv;charset=utf-8"); showToast("Reporte CSV descargado.");
+}
+function exportAdminJson() {
+  if (profile?.role !== "admin") return;
+  const backup = { exportedAt: new Date().toISOString(), exportedBy: user.uid, plans, assignments, tracking, regionalUsers };
+  downloadBlob(JSON.stringify(backup,null,2), `PPVG_respaldo_${new Date().toISOString().slice(0,10)}.json`, "application/json"); showToast("Respaldo JSON descargado.");
+}
 
 async function loadTracking() {
   const snapshot = profile.role === "admin"
@@ -320,8 +504,30 @@ function renderTracking() {
 }
 function editProgress(id) {
   const item = tracking.find(row => row.id === id); if (!item) return;
-  $("progressId").value = id; $("progressActivity").textContent = `${item.activity} · ${REGIONS[item.region]}`;
-  $("progressGoal").value = item.goal; $("progressOne").value = item.periodOne || 0; $("progressTwo").value = item.periodTwo || 0;
+  const plan = plans.find(row => row.id === item.planId) || {};
+  const value = (key, fallback = "—") => {
+    const result = plan[key] ?? item[key];
+    return result === undefined || result === null || result === "" ? fallback : result;
+  };
+  const detailFields = [
+    ["Encargado", value("module", "PPVG")],
+    ["Área estratégica del POA regional", value("area")],
+    ["Objetivos estratégicos", value("strategic")],
+    ["Meta numérica", value("goal", item.goal ?? 0)],
+    ["Indicador estratégico", value("strategicIndicator")],
+    ["Objetivo específico o del producto", value("objective")],
+    ["Indicador", value("indicator")],
+    ["Cantidad de actividades", value("quantity")],
+    ["Período de ejecución", value("period")],
+    ["Actividad", value("activity", item.activity || "—")],
+    ["Responsables", value("responsible")],
+    ["Dirección Regional asignada", REGIONS[item.region] || item.region || "—"]
+  ];
+  $("progressId").value = id;
+  $("progressActivity").textContent = `${item.activity || "Actividad"} · ${REGIONS[item.region] || item.region || "Dirección Regional"}`;
+  $("progressTaskDetails").innerHTML = `<div class="progress-details-heading"><div><span>INFORMACIÓN DE LA TAREA</span><h3>Detalle del planeamiento asignado</h3></div><span class="progress-details-badge">PPVG · 2027</span></div><div class="progress-details-grid">${detailFields.map(([label, content]) => `<div class="progress-detail-item"><small>${escapeHTML(label)}</small><p>${escapeHTML(content)}</p></div>`).join("")}</div>`;
+  $("progressGoal").value = item.goal ?? plan.quantity ?? plan.goal ?? 0;
+  $("progressOne").value = item.periodOne || 0; $("progressTwo").value = item.periodTwo || 0;
   $("progressNotes").value = item.notes || ""; $("progressMsg").textContent = "";
   const readOnly = profile.role === "admin";
   ["progressOne", "progressTwo", "progressNotes"].forEach(field => $(field).disabled = readOnly);
@@ -351,16 +557,35 @@ function updatePreview() {
   const save = $("progressForm").querySelector("button.primary");
   if(save && profile.role === "regional") save.disabled = over;
 }
-["progressOne", "progressTwo"].forEach(id => $(id).addEventListener("input", updatePreview));
+// Los campos de avance aceptan exclusivamente dígitos: bloquea teclas no numéricas
+// y limpia también el contenido pegado o introducido desde teclados móviles.
+["progressOne", "progressTwo"].forEach(id => {
+  const field = $(id);
+  field.addEventListener("beforeinput", event => {
+    if (event.inputType.startsWith("insert") && event.data !== null && /\D/.test(event.data)) {
+      event.preventDefault();
+    }
+  });
+  field.addEventListener("input", () => {
+    const cleanValue = field.value.replace(/\D/g, "");
+    if (field.value !== cleanValue) field.value = cleanValue;
+    updatePreview();
+  });
+});
 $("progressForm").addEventListener("submit", async event => {
   event.preventDefault();
   const id = $("progressId").value, item = tracking.find(row => row.id === id); if (!item || profile.role !== "regional") return;
-  const one = Number($("progressOne").value), two = Number($("progressTwo").value);
-  if (!Number.isInteger(one) || !Number.isInteger(two) || one < 0 || two < 0) { $("progressMsg").textContent = "Ingrese únicamente números enteros iguales o mayores que cero."; return; }
+  const oneText = $("progressOne").value, twoText = $("progressTwo").value;
+  if (!/^\d+$/.test(oneText) || !/^\d+$/.test(twoText)) {
+    $("progressMsg").textContent = "Ingrese únicamente números enteros, sin letras, espacios ni símbolos.";
+    return;
+  }
+  const one = Number(oneText), two = Number(twoText);
+  if (!Number.isSafeInteger(one) || !Number.isSafeInteger(two)) { $("progressMsg").textContent = "Ingrese una cantidad numérica válida."; return; }
   if (one + two > Number(item.goal || 0)) { $("progressMsg").textContent = "La suma de los logros no puede superar la meta asignada."; return; }
   const data = { assignmentId: id, planId: item.planId, region: item.region, goal: Number(item.goal || 0), activity: item.activity, objective: item.objective || "", periodOne: one, periodTwo: two, notes: $("progressNotes").value.trim(), updatedAt: serverTimestamp(), updatedBy: user.uid };
   try {
     await setDoc(doc(db, "ppvgTracking", id), data, { merge: true });
-    $("progressModal").classList.add("hide"); await loadTracking(); showToast("Seguimiento actualizado correctamente");
+    $("progressModal").classList.add("hide"); showToast("Seguimiento actualizado correctamente");
   } catch (error) { console.error(error); $("progressMsg").textContent = "No se pudo guardar. Verifique las reglas de Firestore."; }
 });
