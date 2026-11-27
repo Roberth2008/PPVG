@@ -280,7 +280,7 @@ function renderTracking() {
   $("secondProgress").textContent = percentage(totals.two, totals.goal) + "%";
   $("annualProgress").textContent = percentage(totals.one + totals.two, totals.goal) + "%";
   if ($("trackingCount")) $("trackingCount").textContent = `${rows.length} ${rows.length === 1 ? "actividad" : "actividades"}`;
-  $("trackingBody").innerHTML = rows.length ? rows.map(item => {
+  const renderTrackingCard = item => {
     const one = Number(item.periodOne || 0), two = Number(item.periodTwo || 0), goal = Number(item.goal || 0), annual = one + two;
     const canEdit = profile.role === "admin" || item.region === profile.region;
     const p1 = percentage(one, goal), p2 = percentage(two, goal), pa = percentage(annual, goal);
@@ -300,7 +300,15 @@ function renderTracking() {
       </div>
       <div class="tracking-card-bottom"><small><b>Observaciones:</b> ${escapeHTML(item.notes || "Sin observaciones registradas.")}</small><small>Actualizado por la Dirección Regional correspondiente</small></div>
     </article>`;
-  }).join("") : '<div class="empty-state"><strong>No hay actividades para mostrar</strong><p>Las tareas asignadas aparecerán aquí. Puede cambiar los filtros o consultar con Administración si esperaba ver alguna actividad.</p></div>';
+  };
+  if (!rows.length) {
+    $("trackingBody").innerHTML = '<div class="empty-state"><strong>No hay actividades para mostrar</strong><p>Las tareas asignadas aparecerán aquí. Puede cambiar los filtros o consultar con Administración si esperaba ver alguna actividad.</p></div>';
+  } else if (profile.role === "admin" && selectedRegion === "all") {
+    const grouped = Object.keys(REGIONS).map(regionKey => ({ regionKey, items: rows.filter(item => item.region === regionKey) })).filter(group => group.items.length);
+    $("trackingBody").innerHTML = grouped.map(group => `<section class="tracking-region-group"><div class="tracking-region-heading"><div><small>DIRECCIÓN REGIONAL</small><h2>${escapeHTML(REGIONS[group.regionKey])}</h2></div><span>${group.items.length} ${group.items.length === 1 ? "actividad" : "actividades"}</span></div>${group.items.map(renderTrackingCard).join("")}</section>`).join("");
+  } else {
+    $("trackingBody").innerHTML = rows.map(renderTrackingCard).join("");
+  }
   document.querySelectorAll("[data-progress]").forEach(button => button.addEventListener("click", () => editProgress(button.dataset.progress)));
 }
 function editProgress(id) {
@@ -314,15 +322,34 @@ function editProgress(id) {
   updatePreview(); $("progressModal").classList.remove("hide");
 }
 function updatePreview() {
-  const goal = Number($("progressGoal").value), one = Number($("progressOne").value), two = Number($("progressTwo").value);
-  $("calcPreview").textContent = `I período: ${percentage(one, goal)}% · II período: ${percentage(two, goal)}% · Anual: ${percentage(one + two, goal)}%`;
+  const goal = Math.max(0, Number($("progressGoal").value) || 0);
+  const one = Math.max(0, Number($("progressOne").value) || 0);
+  const two = Math.max(0, Number($("progressTwo").value) || 0);
+  const total = one + two, remaining = Math.max(0, goal - total);
+  const p1 = percentage(one, goal), p2 = percentage(two, goal), pa = percentage(total, goal);
+  $("calcPreview").textContent = `I período: ${p1}% · II período: ${p2}% · Anual: ${pa}%`;
+  if ($("progressEntered")) $("progressEntered").textContent = `${total} / ${goal}`;
+  if ($("progressRemaining")) $("progressRemaining").textContent = remaining;
+  if ($("progressEntryFill")) $("progressEntryFill").style.width = `${Math.min(pa,100)}%`;
+  [["progressOnePercent",p1],["progressTwoPercent",p2],["progressAnnualPercent",pa]].forEach(([id,val])=>{if($(id))$(id).textContent=`${val}%`;});
+  [["progressOneFill",p1],["progressTwoFill",p2],["progressAnnualFill",pa]].forEach(([id,val])=>{if($(id))$(id).style.width=`${Math.min(val,100)}%`;});
+  const over = total > goal;
+  if ($("progressLimitHint")) {
+    $("progressLimitHint").textContent = over ? `Se excede la meta por ${total-goal}. Ajuste los valores para poder guardar.` : `Puede registrar ${remaining} actividad${remaining===1?"":"es"} más entre ambos períodos. El total no puede superar la meta.`;
+    $("progressLimitHint").classList.toggle("over-limit",over);
+  }
+  // Mantiene el límite disponible del otro período como guía del control numérico.
+  $("progressOne").max = String(Math.max(0,goal-two));
+  $("progressTwo").max = String(Math.max(0,goal-one));
+  const save = $("progressForm").querySelector("button.primary");
+  if(save && profile.role === "regional") save.disabled = over;
 }
 ["progressOne", "progressTwo"].forEach(id => $(id).addEventListener("input", updatePreview));
 $("progressForm").addEventListener("submit", async event => {
   event.preventDefault();
   const id = $("progressId").value, item = tracking.find(row => row.id === id); if (!item || profile.role !== "regional") return;
   const one = Number($("progressOne").value), two = Number($("progressTwo").value);
-  if (one < 0 || two < 0) { $("progressMsg").textContent = "Los valores no pueden ser negativos."; return; }
+  if (!Number.isInteger(one) || !Number.isInteger(two) || one < 0 || two < 0) { $("progressMsg").textContent = "Ingrese únicamente números enteros iguales o mayores que cero."; return; }
   if (one + two > Number(item.goal || 0)) { $("progressMsg").textContent = "La suma de los logros no puede superar la meta asignada."; return; }
   const data = { assignmentId: id, planId: item.planId, region: item.region, goal: Number(item.goal || 0), activity: item.activity, objective: item.objective || "", periodOne: one, periodTwo: two, notes: $("progressNotes").value.trim(), updatedAt: serverTimestamp(), updatedBy: user.uid };
   try {
