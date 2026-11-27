@@ -85,9 +85,78 @@ header{height:76px;background:#ffffffd9;backdrop-filter:blur(16px);border-bottom
 .sidebar .logout{position:sticky;bottom:0;margin-top:auto;flex-shrink:0;background:#ffffff0b;border-color:#ffffff24;color:#d4e2ee;}
 @media(max-width:760px){.side-logo img{max-width:232px}.sidebar{padding-top:12px}}
 
-/* Seguimiento consolidado del administrador, organizado por Dirección Regional */
-.tracking-region-group{display:flex;flex-direction:column;gap:12px;margin-bottom:24px}
-.tracking-region-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:15px 19px;background:linear-gradient(115deg,#eaf3f9,#f7fbfd);border:1px solid #d8e7f1;border-radius:14px}
-.tracking-region-heading small{font-size:9px;letter-spacing:1.3px;font-weight:800;color:#7e96aa}
-.tracking-region-heading h2{margin:4px 0 0;font:800 17px Manrope;color:#244d6b}
-.tracking-region-heading>span{background:white;border:1px solid #dce8f0;border-radius:30px;padding:7px 10px;font-size:10px;font-weight:800;color:#56758e;white-space:nowrap}
+/* Correcciones de inicio automático, transiciones y logotipo institucional */
+:root,
+html,
+body,
+.application,
+.sidebar,
+.side-logo {
+  color-scheme: light;
+}
+
+.page {
+  display: none;
+  opacity: 0;
+  transform: translateY(10px);
+}
+
+.page.active {
+  display: block;
+  animation: ppvgPageEnter 560ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes ppvgPageEnter {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Evita tratamientos automáticos del sistema sobre el archivo institucional. */
+.side-logo {
+  color-scheme: only light;
+  background: transparent;
+  isolation: isolate;
+}
+
+.side-logo img {
+  filter: none !important;
+  -webkit-filter: none !important;
+  mix-blend-mode: normal;
+  forced-color-adjust: none;
+  color-scheme: only light;
+  object-fit: contain;
+}
+
+/* Safari/macOS: conserva los colores originales de la identidad institucional. */
+@media (prefers-color-scheme: dark) {
+  html,
+  body,
+  .application,
+  .sidebar,
+  .side-logo {
+    color-scheme: light;
+  }
+
+  .side-logo,
+  .side-logo img {
+    filter: none !important;
+    -webkit-filter: none !important;
+    mix-blend-mode: normal;
+    forced-color-adjust: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .page.active {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+}
+
