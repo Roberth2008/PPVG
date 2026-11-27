@@ -87,10 +87,15 @@ async function startApp() {
   document.querySelectorAll(".admin-only").forEach(element => element.classList.toggle("hide", !isAdmin));
   if (isAdmin) {
     await loadRegionalUsers();
+    // Restablecer el filtro al entrar con Administración, incluso tras cambiar de cuenta.
+    $("regionFilter").disabled = false;
     $("regionFilter").innerHTML = '<option value="all">Todas las direcciones</option>' + Object.entries(REGIONS).map(([key, label]) => `<option value="${key}">${label}</option>`).join("");
+    $("regionFilter").value = "all";
     $("trackingSubtitle").textContent = "Vista consolidada de los avances de las cuatro Direcciones Regionales.";
   } else {
+    // Limpiar filtro y fijarlo únicamente a la región de la cuenta regional.
     $("regionFilter").innerHTML = `<option value="${profile.region}">${REGIONS[profile.region]}</option>`;
+    $("regionFilter").value = profile.region;
     $("regionFilter").disabled = true;
     $("trackingSubtitle").textContent = `Tareas asignadas a la Dirección Regional de ${REGIONS[profile.region]}.`;
   }
@@ -107,7 +112,13 @@ function navigate(page) {
 document.querySelectorAll(".nav").forEach(button => button.addEventListener("click", () => navigate(button.dataset.page)));
 document.querySelectorAll("[data-go]").forEach(button => button.addEventListener("click", () => navigate(button.dataset.go)));
 $("menu").onclick = () => $("sidebar").classList.toggle("open");
-$("logout").onclick = () => signOut(auth);
+$("logout").onclick = async () => {
+  // Evita que filtros de la sesión anterior queden visualmente activos al cambiar de cuenta.
+  if ($("regionFilter")) { $("regionFilter").disabled = false; $("regionFilter").value = "all"; }
+  if ($("moduleFilter")) $("moduleFilter").value = "all";
+  const search = $("trackingSearch"); if (search) search.value = "";
+  await signOut(auth);
+};
 document.querySelectorAll("[data-close]").forEach(button => button.addEventListener("click", () => button.closest(".modal").classList.add("hide")));
 document.addEventListener("keydown", event => { if (event.key === "Escape") document.querySelectorAll(".modal:not(.hide)").forEach(modal => modal.classList.add("hide")); });
 
@@ -258,7 +269,6 @@ async function loadTracking() {
 }
 
 $("regionFilter").addEventListener("change", renderTracking);
-$("periodFilter").addEventListener("change", renderTracking);
 $("moduleFilter").addEventListener("change", renderTracking);
 $("trackingSearch")?.addEventListener("input", renderTracking);
 function percentage(value, goal) { return goal > 0 ? Math.round(value / goal * 100) : 0; }
@@ -267,9 +277,6 @@ function renderTracking() {
   const selectedModule = $("moduleFilter").value;
   let rows = tracking.filter(item => profile.role !== "admin" ? (item.region === profile.region && (!item.targetedToSpecificPeople || (item.targetUserIds || []).includes(user.uid))) : (selectedRegion === "all" || item.region === selectedRegion));
   if (selectedModule !== "all") rows = rows.filter(item => (item.module || "PPVG") === selectedModule);
-  const selectedPeriod = $("periodFilter").value;
-  if (selectedPeriod === "one") rows = rows.filter(item => Number(item.periodOne || 0) > 0);
-  if (selectedPeriod === "two") rows = rows.filter(item => Number(item.periodTwo || 0) > 0);
   const search = ($("trackingSearch")?.value || "").toLowerCase().trim();
   if (search) rows = rows.filter(item => [item.activity, item.objective, item.regionName, REGIONS[item.region]].some(value => String(value || "").toLowerCase().includes(search)));
   const totals = rows.reduce((sum, item) => {
