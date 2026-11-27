@@ -9,9 +9,85 @@
 <main><header><button id="menu" class="menu">☰</button><div>PPVG <span>/</span> <b id="crumb">Inicio</b></div><div class="headright"><span>PERÍODO 2027</span><i id="headAvatar">U</i></div></header><div class="content">
 <section id="page-home" class="page"><div class="welcome"><div><small>MINISTERIO DE EDUCACIÓN PÚBLICA · DRE</small><h1>Panel de gestión <em>PPVG</em></h1><p>Programa Vivamos la Guanacastequidad · 2027</p></div><div class="date"><small>GESTIÓN REGIONAL</small><b id="dateNow">2027</b></div></div><div class="hero"><small>PROGRAMA VIVAMOS LA GUANACASTEQUIDAD</small><h2>Planificación compartida.<br>Seguimiento por responsabilidades.</h2><p>Consulte la planificación institucional y gestione los avances asignados a su Dirección Regional.</p><button data-go="plans">Consultar planificación →</button><div class="landscape"></div></div><div class="cards"><button data-go="plans"><i>▤</i><b>PPVG</b><p>Consulte la planificación completa publicada por Administración.</p><strong>Ver planificación →</strong></button><button data-go="tracking"><i>◷</i><b>Seguimiento de PPVG</b><p>Registre los logros de las tareas asignadas a su Dirección Regional.</p><strong>Ver seguimiento →</strong></button></div></section>
 <section id="page-plans" class="page"><div class="page-title"><div><small>PLANIFICACIÓN ESTRATÉGICA REGIONAL</small><h1>PPVG</h1><p>La planificación completa es visible para las cinco cuentas.</p></div><button id="newPlan" class="primary admin-only">＋ Nueva tarea</button></div><div class="notice">ⓘ <div><b>Planificación institucional compartida</b><p>Todas las cuentas pueden consultar las tareas. Administración define cuáles Direcciones Regionales deben reportar avances.</p></div></div><div class="planning-toolbar"><label class="searchbox"><span>⌕</span><input id="planSearch" type="search" placeholder="Buscar en el planeamiento: área, actividad, indicador, responsable..."></label><span id="planCount" class="result-count"></span></div><div class="planning-sheet-wrap"><div id="plansBody" class="planning-sheet" aria-live="polite"></div></div><p class="planning-hint">Vista de planeamiento · Deslice horizontalmente para consultar todas las columnas. Seleccione una fila para ampliar información.</p></section>
-<section id="page-tracking" class="page"><div class="page-title"><div><small>CONTROL DE EJECUCIÓN</small><h1>Seguimiento de PPVG</h1><p id="trackingSubtitle">Tareas asignadas a su Dirección Regional.</p></div></div><div class="filterbar"><label>👤 Encargado<select id="moduleFilter"><option value="all">Todos los módulos</option></select></label><label>Dirección Regional<select id="regionFilter"></select></label></div><div class="summary"><div><small>TAREAS ASIGNADAS</small><b id="assignedCount">0</b><span class="summary-caption">Actividades bajo seguimiento</span></div><div><small>AVANCE I PERÍODO</small><b id="firstProgress">0%</b><span class="summary-caption">Logro acumulado</span></div><div><small>AVANCE II PERÍODO</small><b id="secondProgress">0%</b><span class="summary-caption">Logro acumulado</span></div><div class="total"><small>AVANCE ANUAL</small><b id="annualProgress">0%</b><span class="summary-caption">Resultado combinado</span></div></div><div class="toolbar tracking-toolbar"><div><strong class="section-label">ACTIVIDADES ASIGNADAS</strong><p class="toolbar-help">Abra cada actividad para consultar el avance y registrar resultados.</p></div><label class="searchbox tracking-search"><span>⌕</span><input id="trackingSearch" type="search" placeholder="Buscar actividad..."></label><span id="trackingCount" class="result-count"></span></div><div id="trackingBody" class="tracking-list" aria-live="polite"></div><p class="footnote">Los porcentajes se calculan automáticamente según la meta y los logros registrados. El resultado anual suma ambos períodos.</p></section>
+<section id="page-tracking" class="page"><div class="page-title"><div><small>CONTROL DE EJECUCIÓN</small><h1>Seguimiento de PPVG</h1><p id="trackingSubtitle">Tareas asignadas a su Dirección Regional.</p></div></div><div class="filterbar"><label>👤 Encargado<select id="moduleFilter"><option value="all">Todos los encargados</option></select></label><label>Dirección Regional<select id="regionFilter"></select></label></div><div class="summary"><div><small>TAREAS ASIGNADAS</small><b id="assignedCount">0</b><span class="summary-caption">Actividades bajo seguimiento</span></div><div><small>AVANCE I PERÍODO</small><b id="firstProgress">0%</b><span class="summary-caption">Logro acumulado</span></div><div><small>AVANCE II PERÍODO</small><b id="secondProgress">0%</b><span class="summary-caption">Logro acumulado</span></div><div class="total"><small>AVANCE ANUAL</small><b id="annualProgress">0%</b><span class="summary-caption">Resultado combinado</span></div></div><div class="toolbar tracking-toolbar"><div><strong class="section-label">ACTIVIDADES ASIGNADAS</strong><p class="toolbar-help">Abra cada actividad para consultar el avance y registrar resultados.</p></div><label class="searchbox tracking-search"><span>⌕</span><input id="trackingSearch" type="search" placeholder="Buscar actividad..."></label><span id="trackingCount" class="result-count"></span></div><div id="trackingBody" class="tracking-list" aria-live="polite"></div><p class="footnote">Los porcentajes se calculan automáticamente según la meta y los logros registrados. El resultado anual suma ambos períodos.</p></section>
 <section id="page-profile" class="page"><div class="page-title"><div><small>CUENTA PERSONAL</small><h1>Datos del perfil</h1><p>Información de la cuenta autenticada.</p></div></div><div class="profile"><div class="bigavatar" id="profileAvatar">U</div><div><h2 id="profileName">Usuario</h2><p id="profileEmail">—</p><span id="profileRole" class="pill">Usuario</span></div></div><div class="profile-details"><div><small>Dirección Regional</small><b id="profileRegion">—</b></div><div><small>Identificador de cuenta</small><b id="profileUid">—</b></div></div></section>
 </div><footer>Ministerio de Educación Pública · Programa Vivamos la Guanacastequidad · 2027</footer></main></div>
-<div class="modal hide" id="planModal"><div class="shade" data-close></div><div class="dialog"><div class="dialog-head"><div><small>PLANIFICACIÓN ESTRATÉGICA REGIONAL</small><h2 id="planModalTitle">Nueva tarea PPVG</h2></div><button data-close>×</button></div><form id="planForm"><input type="hidden" id="planId"><label class="module-select-label">📁 Módulo al que pertenece la tarea<select id="planModule" required><option value="PPVG">PPVG · Programa Vivamos la Guanacastequidad</option><option value="PFP">PFP · Plan de Formación Permanente</option><option value="Control visitas general">Control de visitas general</option><option value="Control visitas">Control de visitas</option><option value="Hoja de control">Hoja de control</option></select></label><div class="formgrid"><label>Área estratégica del POA regional<input id="area" required></label><label>Objetivos estratégicos<textarea id="strategic" rows="2"></textarea></label><label>Meta numérica<input id="goal" type="number" min="0" step="1" value="0"></label><label>Indicador estratégico<textarea id="strategicIndicator" rows="2"></textarea></label><label class="wide">Objetivo específico o del producto<textarea id="objective" rows="3" required></textarea></label><label class="wide">Indicador<textarea id="indicator" rows="2"></textarea></label><label>Cantidad de actividades<input id="quantity" type="number" min="0" step="1" value="1" required></label><label>Período de ejecución<input id="period" placeholder="Febrero-diciembre"></label><label class="wide">Actividad<textarea id="activity" rows="2" required></textarea></label><label>Responsables<input id="responsible"></label></div><div class="assign"><h3>Asignación por Dirección Regional</h3><p>Seleccione las direcciones que deberán registrar el seguimiento de esta tarea. La planificación seguirá visible para todas las cuentas.</p><div id="assignmentBuilder" class="region-checks"></div><div id="peopleAssignment" class="people-assignment"></div></div><div id="planMsg" class="msg"></div><div class="actions"><button type="button" class="secondary" data-close>Cancelar</button><button class="primary" id="savePlan">Guardar tarea</button></div></form></div></div>
-<div class="modal hide" id="progressModal"><div class="shade" data-close></div><div class="dialog narrow"><div class="dialog-head"><div><small>REGISTRO DE AVANCE</small><h2>Actualizar seguimiento</h2></div><button data-close>×</button></div><form id="progressForm"><input type="hidden" id="progressId"><p id="progressActivity" class="progress-task"></p><div class="formgrid"><label>Meta asignada<input id="progressGoal" disabled></label><label>I período · Absoluto<input id="progressOne" type="number" min="0" step="1" required></label><label>II período · Absoluto<input id="progressTwo" type="number" min="0" step="1" required></label></div><div id="progressVisual" class="progress-entry-visual"><div class="progress-entry-summary"><div><small>ACTIVIDADES REGISTRADAS</small><strong id="progressEntered">0 / 0</strong></div><div><small>DISPONIBLES</small><strong id="progressRemaining">0</strong></div></div><div class="progress-entry-track"><div id="progressEntryFill" class="progress-entry-fill"></div></div><div class="progress-entry-periods"><div><span>I período</span><b id="progressOnePercent">0%</b><div class="entry-mini-track"><i id="progressOneFill"></i></div></div><div><span>II período</span><b id="progressTwoPercent">0%</b><div class="entry-mini-track"><i id="progressTwoFill"></i></div></div><div><span>Anual</span><b id="progressAnnualPercent">0%</b><div class="entry-mini-track"><i id="progressAnnualFill"></i></div></div></div><p id="progressLimitHint" class="progress-limit-hint">Distribuya la cantidad asignada entre ambos períodos. El total no puede superar la meta.</p></div><label>Observaciones<textarea id="progressNotes" rows="3"></textarea></label><div class="calc-preview" id="calcPreview">I período: 0% · II período: 0% · Anual: 0%</div><div id="progressMsg" class="msg"></div><div class="actions"><button type="button" class="secondary" data-close>Cancelar</button><button class="primary">Guardar avance</button></div></form></div></div><div id="toast" class="toast"></div>
+<div class="modal hide" id="planModal">
+  <div class="shade" data-close></div>
+  <div class="dialog plan-dialog">
+    <div class="dialog-head plan-dialog-head">
+      <div>
+        <small>PLANIFICACIÓN ESTRATÉGICA REGIONAL</small>
+        <h2 id="planModalTitle">Nueva tarea PPVG</h2>
+        <p class="dialog-intro">Complete la información de la actividad y defina las Direcciones Regionales que deberán darle seguimiento.</p>
+      </div>
+      <button type="button" data-close aria-label="Cerrar">×</button>
+    </div>
+    <form id="planForm" class="plan-form">
+      <input type="hidden" id="planId">
+
+      <section class="form-section form-owner-section">
+        <div class="form-section-heading">
+          <span class="form-section-icon">01</span>
+          <div><h3>Encargado</h3><p>Seleccione el programa o área responsable de esta tarea.</p></div>
+        </div>
+        <label class="module-select-label">Encargado de la tarea
+          <select id="planModule" required>
+            <option value="PPVG">PPVG · Programa Vivamos la Guanacastequidad</option>
+            <option value="PFP">PFP · Plan de Formación Permanente</option>
+            <option value="Control visitas general">Control de visitas general</option>
+            <option value="Control visitas">Control de visitas</option>
+            <option value="Hoja de control">Hoja de control</option>
+          </select>
+        </label>
+      </section>
+
+      <section class="form-section">
+        <div class="form-section-heading">
+          <span class="form-section-icon">02</span>
+          <div><h3>Planeamiento estratégico</h3><p>Defina el área, los objetivos y los indicadores que orientan la tarea.</p></div>
+        </div>
+        <div class="formgrid">
+          <label>Área estratégica del POA regional<input id="area" required placeholder="Escriba el área estratégica"></label>
+          <label>Objetivos estratégicos<textarea id="strategic" rows="3" placeholder="Describa los objetivos relacionados"></textarea></label>
+          <label class="wide">Objetivo específico o del producto<textarea id="objective" rows="3" required placeholder="Indique el resultado específico que se espera alcanzar"></textarea></label>
+          <label>Indicador estratégico<textarea id="strategicIndicator" rows="2" placeholder="Indicador estratégico"></textarea></label>
+          <label>Indicador<textarea id="indicator" rows="2" placeholder="¿Cómo se medirá el cumplimiento?"></textarea></label>
+        </div>
+      </section>
+
+      <section class="form-section">
+        <div class="form-section-heading">
+          <span class="form-section-icon">03</span>
+          <div><h3>Programación de la actividad</h3><p>Establezca la meta, la cantidad prevista y el período de ejecución.</p></div>
+        </div>
+        <div class="formgrid">
+          <label>Meta numérica<input id="goal" type="number" min="0" step="1" value="0" placeholder="0"></label>
+          <label>Cantidad de actividades<input id="quantity" type="number" min="0" step="1" value="1" required></label>
+          <label>Período de ejecución<input id="period" placeholder="Ej. Febrero – diciembre"></label>
+          <label>Personas responsables<input id="responsible" placeholder="Nombre de las personas responsables"></label>
+          <label class="wide">Actividad<textarea id="activity" rows="3" required placeholder="Describa claramente la actividad que se llevará a cabo"></textarea></label>
+        </div>
+      </section>
+
+      <section class="form-section assignment-section">
+        <div class="form-section-heading">
+          <span class="form-section-icon">04</span>
+          <div><h3>Asignación y seguimiento</h3><p>Indique cuáles Direcciones Regionales deberán reportar los avances de esta tarea.</p></div>
+        </div>
+        <div class="assign">
+          <div class="assign-intro"><span class="assign-icon">⌖</span><div><b>Direcciones Regionales</b><p>La tarea seguirá visible en la planificación para todas las cuentas, pero solo las direcciones seleccionadas deberán registrar el seguimiento.</p></div></div>
+          <div id="assignmentBuilder" class="region-checks"></div>
+          <div id="peopleAssignment" class="people-assignment"></div>
+        </div>
+      </section>
+
+      <div id="planMsg" class="msg"></div>
+      <div class="actions plan-actions">
+        <button type="button" class="secondary" data-close>Cancelar</button>
+        <button class="primary" id="savePlan" type="submit"><span>Guardar tarea</span><b>→</b></button>
+      </div>
+    </form>
+  </div>
+</div><div class="modal hide" id="progressModal"><div class="shade" data-close></div><div class="dialog narrow"><div class="dialog-head"><div><small>REGISTRO DE AVANCE</small><h2>Actualizar seguimiento</h2></div><button data-close>×</button></div><form id="progressForm"><input type="hidden" id="progressId"><p id="progressActivity" class="progress-task"></p><div class="formgrid"><label>Meta asignada<input id="progressGoal" disabled></label><label>I período · Absoluto<input id="progressOne" type="number" min="0" step="1" required></label><label>II período · Absoluto<input id="progressTwo" type="number" min="0" step="1" required></label></div><div id="progressVisual" class="progress-entry-visual"><div class="progress-entry-summary"><div><small>ACTIVIDADES REGISTRADAS</small><strong id="progressEntered">0 / 0</strong></div><div><small>DISPONIBLES</small><strong id="progressRemaining">0</strong></div></div><div class="progress-entry-track"><div id="progressEntryFill" class="progress-entry-fill"></div></div><div class="progress-entry-periods"><div><span>I período</span><b id="progressOnePercent">0%</b><div class="entry-mini-track"><i id="progressOneFill"></i></div></div><div><span>II período</span><b id="progressTwoPercent">0%</b><div class="entry-mini-track"><i id="progressTwoFill"></i></div></div><div><span>Anual</span><b id="progressAnnualPercent">0%</b><div class="entry-mini-track"><i id="progressAnnualFill"></i></div></div></div><p id="progressLimitHint" class="progress-limit-hint">Distribuya la cantidad asignada entre ambos períodos. El total no puede superar la meta.</p></div><label>Observaciones<textarea id="progressNotes" rows="3"></textarea></label><div class="calc-preview" id="calcPreview">I período: 0% · II período: 0% · Anual: 0%</div><div id="progressMsg" class="msg"></div><div class="actions"><button type="button" class="secondary" data-close>Cancelar</button><button class="primary">Guardar avance</button></div></form></div></div><div id="toast" class="toast"></div>
 <script type="module" src="./script.js"></script></body></html>

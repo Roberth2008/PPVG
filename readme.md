@@ -1,0 +1,3 @@
+Holaa, soy Roberth Ramirez Villalobos aqui te voy a dejar como un resumen de lo que hicimos y como lo hicimos :)  
+
+Este sistema web es una manera de automatizar la comunicacion entre la administracion y la direccion regional de cañas, liberia, santa cruz y nicoya, especificamente del programa ¨Vivamos la Guanacastequidad.¨, ya que ellos el planeamiento se lo compartian mediante excels, sin eargo era poco funcional y necesitaban modernizarse un poco

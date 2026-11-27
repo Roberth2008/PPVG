@@ -263,7 +263,7 @@ async function loadTracking() {
   const moduleSelect = $("moduleFilter");
   const currentModule = moduleSelect.value || "all";
   const modules = [...new Set(rows.map(row => row.module || "PPVG"))].sort();
-  moduleSelect.innerHTML = '<option value="all">Todos los módulos</option>' + modules.map(m => `<option value="${escapeHTML(m)}">${escapeHTML(m)}</option>`).join("");
+  moduleSelect.innerHTML = '<option value="all">Todos los encargados</option>' + modules.map(m => `<option value="${escapeHTML(m)}">${escapeHTML(m)}</option>`).join("");
   if (modules.includes(currentModule)) moduleSelect.value = currentModule;
   renderTracking();
 }
