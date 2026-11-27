@@ -71,6 +71,7 @@ $("loginForm").addEventListener("submit", async event => {
 
 async function startApp() {
   showApp();
+  navigate("home");
   const name = profile.displayName || user.email?.split("@")[0] || "Usuario";
   const initials = name.split(/[ ._-]/).filter(Boolean).slice(0, 2).map(part => part[0].toUpperCase()).join("") || "U";
   $("accountName").textContent = name;
@@ -279,7 +280,7 @@ function renderTracking() {
   $("secondProgress").textContent = percentage(totals.two, totals.goal) + "%";
   $("annualProgress").textContent = percentage(totals.one + totals.two, totals.goal) + "%";
   if ($("trackingCount")) $("trackingCount").textContent = `${rows.length} ${rows.length === 1 ? "actividad" : "actividades"}`;
-  const renderTrackingCard = item => {
+  $("trackingBody").innerHTML = rows.length ? rows.map(item => {
     const one = Number(item.periodOne || 0), two = Number(item.periodTwo || 0), goal = Number(item.goal || 0), annual = one + two;
     const canEdit = profile.role === "admin" || item.region === profile.region;
     const p1 = percentage(one, goal), p2 = percentage(two, goal), pa = percentage(annual, goal);
@@ -299,15 +300,7 @@ function renderTracking() {
       </div>
       <div class="tracking-card-bottom"><small><b>Observaciones:</b> ${escapeHTML(item.notes || "Sin observaciones registradas.")}</small><small>Actualizado por la Dirección Regional correspondiente</small></div>
     </article>`;
-  };
-  if (!rows.length) {
-    $("trackingBody").innerHTML = '<div class="empty-state"><strong>No hay actividades para mostrar</strong><p>Las tareas asignadas aparecerán aquí. Puede cambiar los filtros o consultar con Administración si esperaba ver alguna actividad.</p></div>';
-  } else if (profile.role === "admin" && selectedRegion === "all") {
-    const grouped = Object.keys(REGIONS).map(regionKey => ({ regionKey, items: rows.filter(item => item.region === regionKey) })).filter(group => group.items.length);
-    $("trackingBody").innerHTML = grouped.map(group => `<section class="tracking-region-group"><div class="tracking-region-heading"><div><small>DIRECCIÓN REGIONAL</small><h2>${escapeHTML(REGIONS[group.regionKey])}</h2></div><span>${group.items.length} ${group.items.length === 1 ? "actividad" : "actividades"}</span></div>${group.items.map(renderTrackingCard).join("")}</section>`).join("");
-  } else {
-    $("trackingBody").innerHTML = rows.map(renderTrackingCard).join("");
-  }
+  }).join("") : '<div class="empty-state"><strong>No hay actividades para mostrar</strong><p>Las tareas asignadas aparecerán aquí. Puede cambiar los filtros o consultar con Administración si esperaba ver alguna actividad.</p></div>';
   document.querySelectorAll("[data-progress]").forEach(button => button.addEventListener("click", () => editProgress(button.dataset.progress)));
 }
 function editProgress(id) {
